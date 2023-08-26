@@ -24,5 +24,5 @@
     {item}
   </Listgroup>
 {:else}
-  <p class="text-primary-50">no protos loaded</p>
+  <p class="text-primary-50">no properly loaded protos</p>
 {/if}
