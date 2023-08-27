@@ -5,3 +5,14 @@ export const dependenciesPath = writable<string>();
 export const currentProtoFilePath = writable<string>();
 export const currentSelectedMessageName = writable<string>();
 export const messageTypesNames = writable<string[]>();
+
+export type EndpointConfig = {
+    host: string,
+    type: string,
+    target: string,
+    loop: boolean,
+    ratePerSec: number,
+    routingKey: string,
+    username: string,
+    password: string
+}

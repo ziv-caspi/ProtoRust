@@ -4,6 +4,7 @@
     currentSelectedMessageName,
     dependenciesPath,
     messageTypesNames,
+    type EndpointConfig,
   } from "$lib";
   import {
     generateDefaultMessageJson,
@@ -20,7 +21,9 @@
 
   let jsonValue: string;
   let publishLoading = false;
-  let toastOpen = false;
+  let successToastOpen = false;
+  let failToastOpen = false;
+  let failMessage = "";
   $: fileSelectionDisabled = !$dependenciesPath;
 
   function onDepsDirSelected(e: CustomEvent<any>): void {
@@ -44,27 +47,35 @@
     ).then((res) => (jsonValue = res));
   }
 
-  async function onPublishRequested(e: CustomEvent<any>): Promise<void> {
+  async function onPublishRequested(
+    e: CustomEvent<EndpointConfig>
+  ): Promise<void> {
     let split = (e.detail.host as string).split(":");
     const rabbitParams: RabbitMqParams = {
       host: split[0],
       port: Number(split[1]),
-      password: "guest",
-      username: "guest",
-      routing_key: "/",
+      password: e.detail.password,
+      username: e.detail.username,
+      routing_key: e.detail.routingKey,
       target_name: e.detail.target,
       is_queue: e.detail.type == "queue",
     };
     publishLoading = true;
-    await publishRabbitMessage(
-      $dependenciesPath,
-      $currentProtoFilePath,
-      $currentSelectedMessageName,
-      rabbitParams,
-      jsonValue
-    );
+    try {
+      await publishRabbitMessage(
+        $dependenciesPath,
+        $currentProtoFilePath,
+        $currentSelectedMessageName,
+        rabbitParams,
+        jsonValue
+      );
+      successToastOpen = true;
+    } catch (err) {
+      console.error(err);
+      failMessage = `${err}`;
+      failToastOpen = true;
+    }
     publishLoading = false;
-    toastOpen = true;
   }
 </script>
 
@@ -101,9 +112,10 @@
         <!-- <MessageEditor value={jsonValue} /> -->
         <MessageEditorAce bind:value={jsonValue} />
       </div>
+
       <Toast
         color="green"
-        bind:open={toastOpen}
+        bind:open={successToastOpen}
         position="bottom-right"
         class=""
       >
@@ -112,6 +124,19 @@
           <span class="sr-only">Check icon</span>
         </svelte:fragment>
         Published message successfully.
+      </Toast>
+
+      <Toast
+        color="red"
+        bind:open={failToastOpen}
+        position="bottom-right"
+        class=""
+      >
+        <svelte:fragment slot="icon">
+          <Icon name="check-circle-solid" class="w-5 h-5" />
+          <span class="sr-only">Check icon</span>
+        </svelte:fragment>
+        Failed to publish. {failMessage}
       </Toast>
     </div>
   </div>
