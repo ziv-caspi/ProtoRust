@@ -3,4 +3,5 @@ import { writable } from "svelte/store";
 
 export const dependenciesPath = writable<string>();
 export const currentProtoFilePath = writable<string>();
+export const currentSelectedMessageName = writable<string>();
 export const messageTypesNames = writable<string[]>();

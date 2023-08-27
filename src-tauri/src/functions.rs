@@ -3,7 +3,10 @@ use std::path::Path;
 use serde::de;
 use tauri::api::file;
 
-use crate::proto_helpers;
+use crate::{
+    proto_helpers,
+    rabbitmq::{self, connection},
+};
 
 #[tauri::command]
 pub async fn load_proto(deps_path: &str, file_path: &str) -> Result<Vec<String>, String> {
@@ -30,4 +33,26 @@ pub async fn gen_default_json(
         Ok(json) => return Ok(json),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+pub async fn publish_rabbitmq_message(
+    includes_dir: &str,
+    proto_file: &str,
+    message_name: &str,
+    params: rabbitmq::connection::RabbitMqParamaters,
+    json: &str,
+) -> Result<(), String> {
+    let body = proto_helpers::serializer::serialize_json_into_binary(
+        Path::new(includes_dir),
+        Path::new(proto_file),
+        message_name,
+        json,
+    )
+    .map_err(|e| e.to_string())?;
+
+    rabbitmq::connection::basic_publish_once(params, body)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }

@@ -1,11 +1,17 @@
 <script lang="ts">
   import {
     currentProtoFilePath,
+    currentSelectedMessageName,
     dependenciesPath,
     messageTypesNames,
   } from "$lib";
-  import { generateDefaultMessageJson, loadProto } from "$lib/api";
-  import { Toast } from "flowbite-svelte";
+  import {
+    generateDefaultMessageJson,
+    loadProto,
+    publishRabbitMessage,
+    type RabbitMqParams,
+  } from "$lib/api";
+  import { Button, Toast } from "flowbite-svelte";
   import { Icon } from "flowbite-svelte-icons";
   import EndpointsConfiguration from "../components/EndpointsConfiguration.svelte";
   import MessageEditorAce from "../components/MessageEditorAce.svelte";
@@ -30,16 +36,33 @@
   }
 
   function onMessageSelected(e: CustomEvent<any>): void {
+    currentSelectedMessageName.set(e.detail.name);
     generateDefaultMessageJson(
       $dependenciesPath,
       $currentProtoFilePath,
-      e.detail.name
+      $currentSelectedMessageName
     ).then((res) => (jsonValue = res));
   }
 
   async function onPublishRequested(e: CustomEvent<any>): Promise<void> {
+    let split = (e.detail.host as string).split(":");
+    const rabbitParams: RabbitMqParams = {
+      host: split[0],
+      port: Number(split[1]),
+      password: "guest",
+      username: "guest",
+      routing_key: "/",
+      target_name: e.detail.target,
+      is_queue: e.detail.type == "queue",
+    };
     publishLoading = true;
-    await new Promise((resolve) => setTimeout(resolve, 2000)); //todo publish to rabbitmq
+    await publishRabbitMessage(
+      $dependenciesPath,
+      $currentProtoFilePath,
+      $currentSelectedMessageName,
+      rabbitParams,
+      jsonValue
+    );
     publishLoading = false;
     toastOpen = true;
   }
@@ -76,7 +99,7 @@
         class="flex flex-row h-screen m-1 rounded-sm shadw-smbg-orange-300 rounded-sm shadw-sm"
       >
         <!-- <MessageEditor value={jsonValue} /> -->
-        <MessageEditorAce value={jsonValue} />
+        <MessageEditorAce bind:value={jsonValue} />
       </div>
       <Toast
         color="green"
