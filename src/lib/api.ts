@@ -1,19 +1,23 @@
+import type { ProtoConfig } from '$lib';
 import { invoke } from '@tauri-apps/api/tauri'
 
 export async function loadProto(dirPath: string, filePath: string): Promise<string[]> {
     return await invoke('load_proto', {depsPath: dirPath, filePath: filePath}) as string[];
 }
 
-export async function generateDefaultMessageJson(dirPath: string, filePath: string, messageName: string) {
-    return await invoke('gen_default_json', {depsPath: dirPath, filePath, messageName}) as string;
+export async function generateDefaultMessageJson(protoConfig: ProtoConfig) {
+    return await invoke('gen_default_json', {
+        depsPath: protoConfig.dependenciesPath,
+        filePath: protoConfig.protoFilePath,
+        messageName: protoConfig.currentSelectedMessage}) as string;
 }
 
-export async function publishRabbitMessage(dirPath: string, filePath: string, messageName: string, params: RabbitMqParams, json: string) {
+export async function publishRabbitMessage(protoConfig: ProtoConfig, params: RabbitMqParams, json: string) {
     console.log('testing rabbit');
     return await invoke('publish_rabbitmq_message', {
-        includesDir: dirPath,
-        protoFile: filePath,
-        messageName,
+        includesDir: protoConfig.dependenciesPath,
+        protoFile: protoConfig.protoFilePath,
+        messageName: protoConfig.currentSelectedMessage,
         json,
         params,
     });

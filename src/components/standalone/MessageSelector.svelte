@@ -6,14 +6,11 @@
   const dispatch = createEventDispatcher();
 
   function onMessageClicked(e: CustomEvent<any>): void {
-    console.log("message clicked");
-    dispatch("click", {
-      name: e.detail,
-    });
+    dispatch("click", e.detail);
   }
 </script>
 
-{#if messageTypes}
+{#if messageTypes && messageTypes.length > 0}
   <Listgroup
     class="w-40 h-min"
     active

@@ -8,20 +8,23 @@
   let modalOpen = false;
   let username = "admin";
   let password = "admin";
-  let host: string;
+  let host: string = "localhost:5672";
   let loop: boolean = false;
   let rate = 1;
   let routingKey = "/";
-  let target: string;
-  let type: string;
+  let target: string = "MY_QUEUE";
+  let type: string = "queue";
   const options = [
     { name: "Echange", value: "exchange" },
     { name: "Queue", value: "queue" },
   ];
 
   function dispatchResult() {
+    const splitHost = host.split(":");
+
     let config: EndpointConfig = {
-      host,
+      host: splitHost[0],
+      port: Number(splitHost[1]),
       target,
       type,
       loop,
@@ -51,12 +54,12 @@
 
   <Modal title="Advanced" bind:open={modalOpen} autoclose outsideclose>
     <div class="flex flex-row justify-between">
-      <div class="flex flex-col">
+      <!-- <div class="flex flex-col">
         <Label>Loop</Label>
         <Toggle bind:value={loop} />
         <Label>Messages/Second</Label>
         <Input type="number" bind:value={routingKey} />
-      </div>
+      </div> -->
       <div class="flex flex-col">
         <Label>Username</Label>
         <Input type="text" bind:value={username} />
