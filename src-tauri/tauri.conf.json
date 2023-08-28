@@ -6,7 +6,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "proto_rust",
+    "productName": "Proto Rust",
     "version": "0.1.0"
   },
   "tauri": {
@@ -35,7 +35,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "anthrax",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
