@@ -1,5 +1,6 @@
 import type { ProtoConfig } from '$lib';
 import { invoke } from '@tauri-apps/api/tauri'
+import { A } from 'flowbite-svelte';
 
 export async function loadProto(dirPath: string, filePath: string): Promise<string[]> {
     return await invoke('load_proto', {depsPath: dirPath, filePath: filePath}) as string[];
@@ -14,19 +15,32 @@ export async function generateDefaultMessageJson(protoConfig: ProtoConfig) {
 
 export async function publishRabbitMessage(protoConfig: ProtoConfig, params: RabbitMqParams, json: string) {
     console.log('testing rabbit');
-    return await invoke('publish_rabbitmq_message', {
+    await invoke('create_connection', {
+        params
+    });
+
+    await invoke('publish_message', {
         includesDir: protoConfig.dependenciesPath,
         protoFile: protoConfig.protoFilePath,
         messageName: protoConfig.currentSelectedMessage,
         json,
-        params,
-    });
+        routingKey: '/',
+        strategy: "Once"
+    })
+
+    // return await invoke('publish_rabbitmq_message', {
+    //     includesDir: protoConfig.dependenciesPath,
+    //     protoFile: protoConfig.protoFilePath,
+    //     messageName: protoConfig.currentSelectedMessage,
+    //     json,
+    //     params,
+    // });
 }
 
 export type RabbitMqParams = {
     target_name: string,
     is_queue: boolean,
-    routing_key: string,
+    routing_key: string, // TODO: make sure this works in the new api
     host: string,
     port: number,
     username: string,

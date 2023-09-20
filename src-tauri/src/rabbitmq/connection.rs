@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use amqprs::{
     callbacks::{DefaultChannelCallback, DefaultConnectionCallback},
     channel::{
@@ -9,6 +11,10 @@ use amqprs::{
 };
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+
+use super::publishing::publish_message;
+
+pub struct ConnectionMutex(pub Mutex<Option<RabbitMqConnection>>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RabbitMqParamaters {
@@ -106,22 +112,6 @@ pub async fn create_channel(configuration: &RabbitMqParamaters) -> Result<Rabbit
         channel,
         target: String::from(target),
     });
-}
-
-pub async fn publish_message(
-    target: &str,
-    channel: &Channel,
-    body: Vec<u8>,
-    routing_key: &str,
-) -> Result<()> {
-    // create arguments for basic_publish
-    let args = BasicPublishArguments::new(target, routing_key);
-
-    channel
-        .basic_publish(BasicProperties::default(), body, args)
-        .await?;
-
-    Ok(())
 }
 
 pub async fn close_channel(channel: Channel, connection: Connection) -> Result<()> {

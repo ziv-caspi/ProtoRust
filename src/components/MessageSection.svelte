@@ -4,10 +4,14 @@
   import { protoConfig, type EndpointConfig } from "$lib";
   import { publishRabbitMessage, type RabbitMqParams } from "$lib/api";
   import Toast from "./standalone/Toast.svelte";
+  import { appWindow } from "@tauri-apps/api/window";
 
   export let jsonValue: string;
   let publishLoading = false;
   let toastState = { shouldOpen: false, isError: false, errorMessage: "" };
+  appWindow.listen("publish_end", (event) => {
+    console.log(event.event, event.payload);
+  });
 
   async function onPublishRequested(
     e: CustomEvent<EndpointConfig>
@@ -24,7 +28,7 @@
     publishLoading = true;
     try {
       await publishRabbitMessage($protoConfig, rabbitParams, jsonValue);
-      toastState = { ...toastState, isError: false, shouldOpen: true };
+      // toastState = { ...toastState, isError: false, shouldOpen: true };
     } catch (err) {
       console.error(err);
       toastState = { errorMessage: `${err}`, isError: true, shouldOpen: true };
