@@ -6,7 +6,10 @@ use amqprs::{
 };
 use anyhow::Result;
 
-use crate::events::{self, EventEmitter};
+use crate::{
+    async_jobs::CancelToken,
+    events::{self, EventEmitter},
+};
 
 #[derive(Clone, serde::Deserialize, Debug)]
 pub enum PublishStrategy {
@@ -38,7 +41,7 @@ pub async fn publish_by_strategy(
     body: Vec<u8>,
     routing_key: &str,
     emitter: impl EventEmitter,
-    cancel: &mut Receiver<bool>,
+    cancel: &mut CancelToken,
 ) -> Result<()> {
     println!("choosing strat: {:?}", strategy);
     match strategy {
@@ -98,13 +101,14 @@ async fn publish_loop<F>(
     body: Vec<u8>,
     routing_key: &str,
     emitter: impl EventEmitter,
-    cancel: &mut Receiver<bool>,
+    cancel: &mut CancelToken,
 ) where
     F: Fn(i32) -> bool,
 {
+    cancel.reset();
     let mut i = 0;
     while done_callback(i) {
-        if let Ok(_) = cancel.try_recv() {
+        if cancel.should_cancel() {
             println!("got a signal to finish publishing");
             events::emit_publish_end_event(
                 emitter,

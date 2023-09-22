@@ -1,4 +1,5 @@
 use crate::{
+    async_jobs::{self, AppState, PublishParams, Shared},
     events::TauriEventEmitter,
     proto_helpers,
     rabbitmq::{
@@ -111,36 +112,24 @@ pub async fn publish_message(
     )
     .map_err(|e| e.to_string())?;
 
-    let emitter = TauriEventEmitter {
-        window_handle: window,
-    };
-
-    let safe_ref = Arc::clone(&connection_mutex.0);
-    let cancel = cancel_channel.rx_mutex();
-    tokio::spawn(async move {
-        let mut cancel_guard = cancel.try_lock().unwrap();
-        let connection_guard = safe_ref
-            .try_lock()
-            .map_err(|_| String::from("cannot change connection while it is being used"))
-            .unwrap();
-        let connection = connection_guard
-            .as_ref()
-            .ok_or("no rabbitmq connection")
-            .unwrap();
-
-        println!("accuired connection. target: {:?}", connection.target);
-        println!("trying to publish");
-        let _ = rabbitmq::publishing::publish_by_strategy(
+    async_jobs::start_publishing(
+        AppState {
+            rabbit_mutex: Shared(connection_mutex.0 .0.clone()),
+            cancel_token: cancel_channel.get_token(),
+            window,
+        },
+        PublishParams {
+            includes_dir,
+            proto_file,
+            message_name,
+            json,
+            routing_key,
             strategy,
-            &connection.target,
-            &connection.channel,
             body,
-            &routing_key,
-            emitter,
-            &mut *cancel_guard,
-        )
-        .await;
-    });
+        },
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

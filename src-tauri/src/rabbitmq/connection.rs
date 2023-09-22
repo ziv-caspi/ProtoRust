@@ -13,9 +13,11 @@ use amqprs::{
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::async_jobs::Shared;
+
 use super::publishing::publish_message;
 
-pub struct ConnectionMutex(pub Arc<Mutex<Option<RabbitMqConnection>>>);
+pub struct ConnectionMutex(pub Shared<Option<RabbitMqConnection>>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RabbitMqParamaters {
