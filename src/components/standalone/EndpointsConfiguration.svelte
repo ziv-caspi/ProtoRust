@@ -1,6 +1,14 @@
 <script lang="ts">
   import type { EndpointConfig } from "$lib";
-  import { Button, Input, Select, Modal, Toggle, Label } from "flowbite-svelte";
+  import {
+    Button,
+    Input,
+    Select,
+    Modal,
+    Toggle,
+    Label,
+    Spinner,
+  } from "flowbite-svelte";
   import { createEventDispatcher } from "svelte";
 
   export let publishLoading: boolean;
@@ -40,6 +48,10 @@
     };
     dispatch("publish", config);
   }
+
+  function dispatchCancel() {
+    dispatch("cancel");
+  }
 </script>
 
 <div class="flex flex-row grow">
@@ -49,13 +61,16 @@
   <Button class="m-1" color="light" on:click={() => (modalOpen = true)}>
     More
   </Button>
-  <Button class="m-1" on:click={dispatchResult}>
-    {#if publishLoading}
-      Loading...
-    {:else}
-      Publish
-    {/if}
-  </Button>
+  {#if !publishLoading}
+    <Button class="m-1" on:click={dispatchResult}>Publish</Button>
+  {:else}
+    <Button class="m-1" on:click={dispatchCancel}>
+      <div class="flex flex-row justify-center">
+        <p class="mr-2">Cancel</p>
+        <Spinner size="4" />
+      </div>
+    </Button>
+  {/if}
 
   <Modal title="Advanced" bind:open={modalOpen} autoclose outsideclose>
     <div class="flex flex-row justify-between">
@@ -74,8 +89,10 @@
         <Input type="text" bind:value={routingKey} />
       </div>
       <div class="flex flex-col">
+        <Label>Loop</Label>
+        <Toggle bind:checked={loop} />
         <Label>Messages To Publish</Label>
-        <Input type="text" bind:value={quantity} />
+        <Input type="text" bind:value={quantity} disabled={loop} />
         <Label>Messages\Second</Label>
         <Input type="text" bind:value={speed} />
       </div>

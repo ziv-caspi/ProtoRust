@@ -1,3 +1,5 @@
+use tokio::sync::mpsc::Receiver;
+
 use amqprs::{
     channel::{BasicPublishArguments, Channel},
     BasicProperties,
@@ -36,6 +38,7 @@ pub async fn publish_by_strategy(
     body: Vec<u8>,
     routing_key: &str,
     emitter: impl EventEmitter,
+    cancel: &mut Receiver<bool>,
 ) -> Result<()> {
     println!("choosing strat: {:?}", strategy);
     match strategy {
@@ -50,11 +53,21 @@ pub async fn publish_by_strategy(
                 body,
                 routing_key,
                 emitter,
+                cancel,
             )
             .await;
         }
         PublishStrategy::Infinite { speed: _ } => {
-            let _ = publish_loop(|_| true, target, channel, body, routing_key, emitter).await;
+            let _ = publish_loop(
+                |_| true,
+                target,
+                channel,
+                body,
+                routing_key,
+                emitter,
+                cancel,
+            )
+            .await;
         }
     };
 
@@ -85,11 +98,21 @@ async fn publish_loop<F>(
     body: Vec<u8>,
     routing_key: &str,
     emitter: impl EventEmitter,
+    cancel: &mut Receiver<bool>,
 ) where
     F: Fn(i32) -> bool,
 {
     let mut i = 0;
     while done_callback(i) {
+        if let Ok(_) = cancel.try_recv() {
+            println!("got a signal to finish publishing");
+            events::emit_publish_end_event(
+                emitter,
+                events::PublishEnd(Err(String::from("publishing cancelled before finishing"))),
+            );
+            return;
+        }
+
         if let Err(e) = publish_message(target, channel, body.clone(), routing_key).await {
             events::emit_publish_end_event(
                 emitter,
@@ -97,6 +120,7 @@ async fn publish_loop<F>(
             );
             return;
         }
+
         i += 1;
         println!("published {:?} messages so far", i);
     }

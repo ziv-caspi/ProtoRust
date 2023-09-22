@@ -21,11 +21,13 @@ export async function publishRabbitMessage(protoConfig: ProtoConfig, params: Rab
     let strategy;
     if (params.quantity == 1) {
         strategy = 'Once';
-    } else {
+    } else if (params.quantity > 1) {
         strategy = {Limited: {
             quantity: +params.quantity,
             speed: +params.speed
         }} // TODO: not working
+    } else if (params.quantity == -1) {
+        strategy = {Infinite: {speed: +params.speed}}
     }
 
     await invoke('publish_message', {
@@ -36,6 +38,10 @@ export async function publishRabbitMessage(protoConfig: ProtoConfig, params: Rab
         routingKey: '/',
         strategy
     })
+}
+
+export async function cancelPublishing() {
+    await invoke('cancel_publish');
 }
 
 export type RabbitMqParams = {

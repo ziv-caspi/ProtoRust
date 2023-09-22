@@ -2,7 +2,11 @@
   import EndpointsConfiguration from "./standalone/EndpointsConfiguration.svelte";
   import MessageEditorAce from "./standalone/MessageEditorAce.svelte";
   import { protoConfig, type EndpointConfig } from "$lib";
-  import { publishRabbitMessage, type RabbitMqParams } from "$lib/api";
+  import {
+    publishRabbitMessage as startPublishRabbitMessage,
+    type RabbitMqParams,
+    cancelPublishing,
+  } from "$lib/api";
   import Toast from "./standalone/Toast.svelte";
   import { appWindow } from "@tauri-apps/api/window";
 
@@ -29,6 +33,8 @@
         errorMessage: `${err.Err}`,
       };
     }
+
+    publishLoading = false;
   });
 
   async function onPublishRequested(
@@ -42,24 +48,40 @@
       routing_key: e.detail.routingKey,
       target_name: e.detail.target,
       is_queue: e.detail.type == "queue",
-      quantity: e.detail.quantity,
+      quantity: e.detail.loop ? -1 : e.detail.quantity,
       speed: e.detail.speed,
     };
     publishLoading = true;
     try {
-      await publishRabbitMessage($protoConfig, rabbitParams, jsonValue);
+      await startPublishRabbitMessage($protoConfig, rabbitParams, jsonValue);
       // toastState = { ...toastState, isError: false, shouldOpen: true };
     } catch (err) {
       console.error(err);
       toastState = { errorMessage: `${err}`, isError: true, shouldOpen: true };
+      publishLoading = false;
     }
-    publishLoading = false;
+  }
+
+  async function onCancelRequested() {
+    try {
+      await cancelPublishing();
+    } catch (err) {
+      toastState = {
+        errorMessage: `could not cancel: ${err}`,
+        isError: true,
+        shouldOpen: true,
+      };
+    }
   }
 </script>
 
 <div class="flex flex-col grow">
   <div class="flex flex-row p-3 h-20 rounded-sm m-1 shadw-sm">
-    <EndpointsConfiguration on:publish={onPublishRequested} {publishLoading} />
+    <EndpointsConfiguration
+      on:publish={onPublishRequested}
+      on:cancel={onCancelRequested}
+      {publishLoading}
+    />
   </div>
   <div
     class="flex flex-row h-screen m-1 rounded-sm shadw-smbg-orange-300 rounded-sm shadw-sm"

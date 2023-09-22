@@ -6,8 +6,11 @@ use crate::{
         connection::{self, create_channel, ConnectionMutex},
         publishing::PublishStrategy,
     },
+    CancelSignalChannel,
 };
 use std::{path::Path, sync::Arc};
+use tauri::State;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 #[tauri::command]
 pub async fn load_proto(deps_path: &str, file_path: &str) -> Result<Vec<String>, String> {
@@ -61,7 +64,7 @@ pub async fn publish_rabbitmq_message(
 #[tauri::command]
 pub async fn create_connection(
     params: rabbitmq::connection::RabbitMqParamaters,
-    connection: tauri::State<'_, ConnectionMutex>,
+    connection: State<'_, ConnectionMutex>,
 ) -> Result<(), String> {
     let channel = create_channel(&params)
         .await
@@ -77,7 +80,7 @@ pub async fn create_connection(
 }
 
 #[tauri::command]
-pub async fn close_connection(connection: tauri::State<'_, ConnectionMutex>) -> Result<(), String> {
+pub async fn close_connection(connection: State<'_, ConnectionMutex>) -> Result<(), String> {
     *connection
         .0
         .try_lock()
@@ -94,7 +97,8 @@ pub async fn publish_message(
     json: String,
     routing_key: String,
     strategy: PublishStrategy,
-    connection_mutex: tauri::State<'_, ConnectionMutex>,
+    connection_mutex: State<'_, ConnectionMutex>,
+    cancel_channel: State<'_, CancelSignalChannel>,
     window: tauri::Window,
 ) -> Result<(), String> {
     println!("{:?}", strategy);
@@ -112,25 +116,39 @@ pub async fn publish_message(
     };
 
     let safe_ref = Arc::clone(&connection_mutex.0);
+    let cancel = cancel_channel.rx_mutex();
     tokio::spawn(async move {
-        let lock = safe_ref
+        let mut cancel_guard = cancel.try_lock().unwrap();
+        let connection_guard = safe_ref
             .try_lock()
             .map_err(|_| String::from("cannot change connection while it is being used"))
             .unwrap();
-        let conn = lock.as_ref().ok_or("no rabbitmq connection").unwrap();
+        let connection = connection_guard
+            .as_ref()
+            .ok_or("no rabbitmq connection")
+            .unwrap();
 
-        println!("accuired connection. target: {:?}", conn.target);
+        println!("accuired connection. target: {:?}", connection.target);
         println!("trying to publish");
         let _ = rabbitmq::publishing::publish_by_strategy(
             strategy,
-            &conn.target,
-            &conn.channel,
+            &connection.target,
+            &connection.channel,
             body,
             &routing_key,
             emitter,
+            &mut *cancel_guard,
         )
         .await;
     });
 
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_publish(cancel_channel: State<'_, CancelSignalChannel>) -> Result<(), String> {
+    println!("got cancel command");
+    let sender = cancel_channel.tx();
+    sender.send(true).await.map_err(|e| e.to_string())?;
     Ok(())
 }
