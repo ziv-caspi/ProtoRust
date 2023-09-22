@@ -7,7 +7,7 @@ use crate::{
         publishing::PublishStrategy,
     },
 };
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 #[tauri::command]
 pub async fn load_proto(deps_path: &str, file_path: &str) -> Result<Vec<String>, String> {
@@ -88,26 +88,22 @@ pub async fn close_connection(connection: tauri::State<'_, ConnectionMutex>) -> 
 
 #[tauri::command]
 pub async fn publish_message(
-    includes_dir: &str,
-    proto_file: &str,
-    message_name: &str,
-    json: &str,
-    routing_key: &str,
+    includes_dir: String,
+    proto_file: String,
+    message_name: String,
+    json: String,
+    routing_key: String,
     strategy: PublishStrategy,
     connection_mutex: tauri::State<'_, ConnectionMutex>,
     window: tauri::Window,
 ) -> Result<(), String> {
-    let lock = connection_mutex
-        .0
-        .try_lock()
-        .map_err(|_| String::from("cannot change connection while it is being used"))?;
-    let conn = lock.as_ref().ok_or("no rabbitmq connection")?;
+    println!("{:?}", strategy);
 
     let body = proto_helpers::serializer::serialize_json_into_binary(
-        Path::new(includes_dir),
-        Path::new(proto_file),
-        message_name,
-        json,
+        Path::new(&includes_dir),
+        Path::new(&proto_file),
+        &message_name,
+        &json,
     )
     .map_err(|e| e.to_string())?;
 
@@ -115,14 +111,26 @@ pub async fn publish_message(
         window_handle: window,
     };
 
-    let _ = rabbitmq::publishing::publish_by_strategy(
-        strategy,
-        &conn.target,
-        &conn.channel,
-        body,
-        routing_key,
-        emitter,
-    );
+    let safe_ref = Arc::clone(&connection_mutex.0);
+    tokio::spawn(async move {
+        let lock = safe_ref
+            .try_lock()
+            .map_err(|_| String::from("cannot change connection while it is being used"))
+            .unwrap();
+        let conn = lock.as_ref().ok_or("no rabbitmq connection").unwrap();
+
+        println!("accuired connection. target: {:?}", conn.target);
+        println!("trying to publish");
+        let _ = rabbitmq::publishing::publish_by_strategy(
+            strategy,
+            &conn.target,
+            &conn.channel,
+            body,
+            &routing_key,
+            emitter,
+        )
+        .await;
+    });
 
     Ok(())
 }

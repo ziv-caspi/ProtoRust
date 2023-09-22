@@ -14,6 +14,9 @@
   let routingKey = "/";
   let target: string = "MY_QUEUE";
   let type: string = "queue";
+  let speed: number = 10;
+  let quantity: number = 1;
+
   const options = [
     { name: "Echange", value: "exchange" },
     { name: "Queue", value: "queue" },
@@ -32,6 +35,8 @@
       ratePerSec: rate,
       username,
       password,
+      speed,
+      quantity,
     };
     dispatch("publish", config);
   }
@@ -67,6 +72,12 @@
         <Input type="text" bind:value={password} />
         <Label>Routing Key</Label>
         <Input type="text" bind:value={routingKey} />
+      </div>
+      <div class="flex flex-col">
+        <Label>Messages To Publish</Label>
+        <Input type="text" bind:value={quantity} />
+        <Label>Messages\Second</Label>
+        <Input type="text" bind:value={speed} />
       </div>
     </div>
   </Modal>

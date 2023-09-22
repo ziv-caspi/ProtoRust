@@ -1,6 +1,5 @@
 import type { ProtoConfig } from '$lib';
 import { invoke } from '@tauri-apps/api/tauri'
-import { A } from 'flowbite-svelte';
 
 export async function loadProto(dirPath: string, filePath: string): Promise<string[]> {
     return await invoke('load_proto', {depsPath: dirPath, filePath: filePath}) as string[];
@@ -19,22 +18,24 @@ export async function publishRabbitMessage(protoConfig: ProtoConfig, params: Rab
         params
     });
 
+    let strategy;
+    if (params.quantity == 1) {
+        strategy = 'Once';
+    } else {
+        strategy = {Limited: {
+            quantity: +params.quantity,
+            speed: +params.speed
+        }} // TODO: not working
+    }
+
     await invoke('publish_message', {
         includesDir: protoConfig.dependenciesPath,
         protoFile: protoConfig.protoFilePath,
         messageName: protoConfig.currentSelectedMessage,
         json,
         routingKey: '/',
-        strategy: "Once"
+        strategy
     })
-
-    // return await invoke('publish_rabbitmq_message', {
-    //     includesDir: protoConfig.dependenciesPath,
-    //     protoFile: protoConfig.protoFilePath,
-    //     messageName: protoConfig.currentSelectedMessage,
-    //     json,
-    //     params,
-    // });
 }
 
 export type RabbitMqParams = {
@@ -44,5 +45,7 @@ export type RabbitMqParams = {
     host: string,
     port: number,
     username: string,
-    password: string
+    password: string,
+    quantity: number,
+    speed: number
 }

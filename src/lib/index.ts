@@ -24,5 +24,7 @@ export type EndpointConfig = {
     ratePerSec: number,
     routingKey: string,
     username: string,
-    password: string
+    password: string,
+    speed: number,
+    quantity: number
 }

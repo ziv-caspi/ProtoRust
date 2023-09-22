@@ -11,6 +11,24 @@
   let toastState = { shouldOpen: false, isError: false, errorMessage: "" };
   appWindow.listen("publish_end", (event) => {
     console.log(event.event, event.payload);
+
+    const result: any = event.payload;
+    if (result.hasOwnProperty("Ok")) {
+      let ok = event.payload as { Ok: number };
+      toastState = {
+        ...toastState,
+        isError: false,
+        shouldOpen: true,
+      };
+    } else if (result.hasOwnProperty("Err")) {
+      let err = event.payload as { Err: string };
+      toastState = {
+        ...toastState,
+        isError: true,
+        shouldOpen: true,
+        errorMessage: `${err.Err}`,
+      };
+    }
   });
 
   async function onPublishRequested(
@@ -24,6 +42,8 @@
       routing_key: e.detail.routingKey,
       target_name: e.detail.target,
       is_queue: e.detail.type == "queue",
+      quantity: e.detail.quantity,
+      speed: e.detail.speed,
     };
     publishLoading = true;
     try {

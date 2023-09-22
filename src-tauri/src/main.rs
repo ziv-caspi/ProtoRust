@@ -6,13 +6,13 @@ mod functions;
 mod proto_helpers;
 mod rabbitmq;
 
-use std::sync::Mutex;
-
 use rabbitmq::connection::ConnectionMutex;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 fn main() {
     tauri::Builder::default()
-        .manage(ConnectionMutex(Mutex::new(None)))
+        .manage(ConnectionMutex(Arc::new(Mutex::new(None))))
         .invoke_handler(tauri::generate_handler![
             functions::load_proto,
             functions::gen_default_json,

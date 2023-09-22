@@ -1,4 +1,5 @@
-use std::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use amqprs::{
     callbacks::{DefaultChannelCallback, DefaultConnectionCallback},
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use super::publishing::publish_message;
 
-pub struct ConnectionMutex(pub Mutex<Option<RabbitMqConnection>>);
+pub struct ConnectionMutex(pub Arc<Mutex<Option<RabbitMqConnection>>>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RabbitMqParamaters {

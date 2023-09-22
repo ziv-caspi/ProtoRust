@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use crate::events::{self, EventEmitter};
 
-#[derive(Clone, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize, Debug)]
 pub enum PublishStrategy {
     Once,
     Limited { quantity: i32, speed: i32 },
@@ -37,9 +37,10 @@ pub async fn publish_by_strategy(
     routing_key: &str,
     emitter: impl EventEmitter,
 ) -> Result<()> {
+    println!("choosing strat: {:?}", strategy);
     match strategy {
         PublishStrategy::Once => {
-            let _ = publish_once(target, channel, body, routing_key, emitter);
+            let _ = publish_once(target, channel, body, routing_key, emitter).await;
         }
         PublishStrategy::Limited { quantity, speed: _ } => {
             let _ = publish_loop(
@@ -49,10 +50,11 @@ pub async fn publish_by_strategy(
                 body,
                 routing_key,
                 emitter,
-            );
+            )
+            .await;
         }
         PublishStrategy::Infinite { speed: _ } => {
-            let _ = publish_loop(|_| true, target, channel, body, routing_key, emitter);
+            let _ = publish_loop(|_| true, target, channel, body, routing_key, emitter).await;
         }
     };
 
@@ -96,6 +98,7 @@ async fn publish_loop<F>(
             return;
         }
         i += 1;
+        println!("published {:?} messages so far", i);
     }
 
     events::emit_publish_end_event(emitter, events::PublishEnd(Ok(i)));
