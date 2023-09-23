@@ -1,3 +1,7 @@
+use crate::{
+    events::TauriEventEmitter,
+    rabbitmq::{self, connection::ConnectionMutex, publishing::PublishStrategy},
+};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::{
@@ -5,18 +9,7 @@ use tokio::sync::{
     Mutex,
 };
 
-use crate::{
-    events::TauriEventEmitter,
-    rabbitmq::{self, connection::RabbitMqConnection, publishing::PublishStrategy},
-};
-
-pub struct Shared<T>(pub Arc<Mutex<T>>);
-
-impl<T> Shared<T> {
-    pub fn new(t: T) -> Shared<T> {
-        Shared(Arc::new(Mutex::new(t)))
-    }
-}
+pub type Shared<T> = Arc<Mutex<T>>;
 
 pub struct CancelSignalChannel {
     base_tx: mpsc::Sender<bool>,
@@ -28,7 +21,7 @@ impl CancelSignalChannel {
         let (tx, rx) = mpsc::channel(1);
         CancelSignalChannel {
             base_tx: tx,
-            rx: Shared::new(rx),
+            rx: Arc::new(Mutex::new(rx)),
         }
     }
 
@@ -36,13 +29,9 @@ impl CancelSignalChannel {
         self.base_tx.clone()
     }
 
-    pub fn rx_mutex(&self) -> Arc<Mutex<mpsc::Receiver<bool>>> {
-        self.rx.0.clone()
-    }
-
     pub fn get_token(&self) -> CancelToken {
         CancelToken {
-            rx: self.rx.0.clone(),
+            rx: self.rx.clone(),
         }
     }
 }
@@ -72,7 +61,7 @@ impl CancelToken {
 }
 
 pub struct AppState {
-    pub rabbit_mutex: Shared<Option<RabbitMqConnection>>,
+    pub rabbit_mutex: ConnectionMutex,
     pub cancel_token: CancelToken,
     pub window: tauri::Window,
 }
@@ -89,7 +78,7 @@ pub struct PublishParams {
 
 pub async fn start_publishing(app_state: AppState, publish_params: PublishParams) -> Result<()> {
     tokio::spawn(async move {
-        let connection_guard = app_state.rabbit_mutex.0.try_lock().unwrap();
+        let connection_guard = app_state.rabbit_mutex.try_lock().unwrap();
         let connection = connection_guard
             .as_ref()
             .ok_or("no rabbitmq connection")

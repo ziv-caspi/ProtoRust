@@ -72,7 +72,6 @@ pub async fn create_connection(
         .map_err(|_| String::from("could not connect to rabbitmq"))?;
 
     *connection
-        .0
         .try_lock()
         .map_err(|_| String::from("cannot change connection while it is being used"))? =
         Some(channel);
@@ -83,7 +82,6 @@ pub async fn create_connection(
 #[tauri::command]
 pub async fn close_connection(connection: State<'_, ConnectionMutex>) -> Result<(), String> {
     *connection
-        .0
         .try_lock()
         .map_err(|_| String::from("cannot close connection while it is being used"))? = None;
 
@@ -114,7 +112,7 @@ pub async fn publish_message(
 
     async_jobs::start_publishing(
         AppState {
-            rabbit_mutex: Shared(connection_mutex.0 .0.clone()),
+            rabbit_mutex: (*connection_mutex).clone(),
             cancel_token: cancel_channel.get_token(),
             window,
         },

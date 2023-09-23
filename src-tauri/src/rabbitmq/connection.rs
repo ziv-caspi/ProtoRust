@@ -17,7 +17,7 @@ use crate::async_jobs::Shared;
 
 use super::publishing::publish_message;
 
-pub struct ConnectionMutex(pub Shared<Option<RabbitMqConnection>>);
+pub type ConnectionMutex = Shared<Option<RabbitMqConnection>>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RabbitMqParamaters {

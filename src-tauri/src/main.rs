@@ -7,15 +7,18 @@ mod functions;
 mod proto_helpers;
 mod rabbitmq;
 
-use async_jobs::{CancelSignalChannel, Shared};
+use async_jobs::CancelSignalChannel;
 use rabbitmq::connection::ConnectionMutex;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 fn main() {
+    let connection: ConnectionMutex = Arc::new(Mutex::new(None));
+    let cancel_channel = CancelSignalChannel::new();
+
     tauri::Builder::default()
-        .manage(ConnectionMutex(Shared::new(None)))
-        .manage(CancelSignalChannel::new())
+        .manage(connection)
+        .manage(cancel_channel)
         .invoke_handler(tauri::generate_handler![
             functions::load_proto,
             functions::gen_default_json,
