@@ -1,17 +1,15 @@
 use crate::{
-    async_jobs::{self, AppState, PublishParams, Shared},
-    events::TauriEventEmitter,
+    async_jobs::{self, AppState, PublishParams},
     proto_helpers,
     rabbitmq::{
         self,
-        connection::{self, create_channel, ConnectionMutex},
+        connection::{create_channel, ConnectionMutex},
         publishing::PublishStrategy,
     },
     CancelSignalChannel,
 };
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 use tauri::State;
-use tokio::sync::mpsc::{Receiver, Sender};
 
 #[tauri::command]
 pub async fn load_proto(deps_path: &str, file_path: &str) -> Result<Vec<String>, String> {

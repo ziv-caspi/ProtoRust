@@ -1,7 +1,4 @@
-use crate::{
-    events::TauriEventEmitter,
-    rabbitmq::{self, connection::ConnectionMutex, publishing::PublishStrategy},
-};
+use crate::rabbitmq::{self, connection::ConnectionMutex, publishing::PublishStrategy};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::{
@@ -44,7 +41,7 @@ impl CancelToken {
     pub fn reset(&self) {
         let receiver = &mut *self.rx.try_lock().unwrap();
         loop {
-            if let Err(e) = receiver.try_recv() {
+            if let Err(_) = receiver.try_recv() {
                 break;
             }
         }
@@ -84,10 +81,6 @@ pub async fn start_publishing(app_state: AppState, publish_params: PublishParams
             .ok_or("no rabbitmq connection")
             .unwrap();
 
-        let emitter = TauriEventEmitter {
-            window_handle: app_state.window,
-        };
-
         let mut cancel = app_state.cancel_token;
         let _ = rabbitmq::publishing::publish_by_strategy(
             publish_params.strategy,
@@ -95,7 +88,7 @@ pub async fn start_publishing(app_state: AppState, publish_params: PublishParams
             &connection.channel,
             publish_params.body,
             &publish_params.routing_key,
-            emitter,
+            app_state.window,
             &mut cancel,
         )
         .await;

@@ -2,27 +2,23 @@ pub trait EventEmitter {
     fn emit<S>(&self, name: &str, message: S)
     where
         S: Clone + serde::Serialize;
+
+    fn emit_publish_end_event(&self, publish_end: PublishEnd);
 }
 
-pub struct TauriEventEmitter {
-    pub window_handle: tauri::Window,
-}
-
-impl EventEmitter for TauriEventEmitter {
+impl EventEmitter for tauri::Window {
     fn emit<S>(&self, name: &str, message: S)
     where
         S: Clone + serde::Serialize,
     {
-        self.window_handle
-            .emit(name, message)
-            .expect("cannot emit events, something is wrong!");
+        let _ = self.emit(name, message);
+    }
+
+    fn emit_publish_end_event(&self, publish_end: PublishEnd) {
+        println!("emitting publish end event");
+        let _ = self.emit("publish_end", publish_end);
     }
 }
 
 #[derive(Clone, serde::Serialize)]
 pub struct PublishEnd(pub Result<i32, String>);
-
-pub fn emit_publish_end_event(emitter: impl EventEmitter, publish_end: PublishEnd) {
-    println!("emitting event");
-    emitter.emit("publish_end", publish_end);
-}

@@ -1,5 +1,3 @@
-use tokio::sync::mpsc::Receiver;
-
 use amqprs::{
     channel::{BasicPublishArguments, Channel},
     BasicProperties,
@@ -86,11 +84,10 @@ async fn publish_once(
 ) {
     println!("publishing once");
     match publish_message(target, channel, body, routing_key).await {
-        Ok(_) => events::emit_publish_end_event(emitter, events::PublishEnd(Ok(1))),
-        Err(e) => events::emit_publish_end_event(
-            emitter,
-            events::PublishEnd(Err(String::from(e.to_string()))),
-        ),
+        Ok(_) => emitter.emit_publish_end_event(events::PublishEnd(Ok(1))),
+        Err(e) => {
+            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(e.to_string()))))
+        }
     }
 }
 
@@ -110,18 +107,14 @@ async fn publish_loop<F>(
     while done_callback(i) {
         if cancel.should_cancel() {
             println!("got a signal to finish publishing");
-            events::emit_publish_end_event(
-                emitter,
-                events::PublishEnd(Err(String::from("publishing cancelled before finishing"))),
-            );
+            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(
+                "publishing cancelled before finishing",
+            ))));
             return;
         }
 
         if let Err(e) = publish_message(target, channel, body.clone(), routing_key).await {
-            events::emit_publish_end_event(
-                emitter,
-                events::PublishEnd(Err(String::from(e.to_string()))),
-            );
+            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(e.to_string()))));
             return;
         }
 
@@ -129,5 +122,5 @@ async fn publish_loop<F>(
         println!("published {:?} messages so far", i);
     }
 
-    events::emit_publish_end_event(emitter, events::PublishEnd(Ok(i)));
+    emitter.emit_publish_end_event(events::PublishEnd(Ok(i)));
 }
