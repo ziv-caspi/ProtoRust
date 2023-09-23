@@ -1,24 +1,25 @@
-pub trait EventEmitter {
-    fn emit<S>(&self, name: &str, message: S)
-    where
-        S: Clone + serde::Serialize;
+#[derive(Clone, serde::Serialize)]
+pub enum Event {
+    PublishEnd(Result<i32, String>),
+    ProgressUpdate(ProgressUpdate),
+}
 
-    fn emit_publish_end_event(&self, publish_end: PublishEnd);
+pub trait EventEmitter {
+    fn emit(&self, event: Event);
 }
 
 impl EventEmitter for tauri::Window {
-    fn emit<S>(&self, name: &str, message: S)
-    where
-        S: Clone + serde::Serialize,
-    {
-        let _ = self.emit(name, message);
-    }
-
-    fn emit_publish_end_event(&self, publish_end: PublishEnd) {
-        println!("emitting publish end event");
-        let _ = self.emit("publish_end", publish_end);
+    fn emit(&self, event: Event) {
+        match event {
+            Event::PublishEnd(result) => self.emit("publish_end", result),
+            Event::ProgressUpdate(progress) => self.emit("progress_update", progress),
+        };
     }
 }
 
 #[derive(Clone, serde::Serialize)]
-pub struct PublishEnd(pub Result<i32, String>);
+pub struct ProgressUpdate {
+    published_count: i32,
+    expected_speed: i32,
+    actual_speed: i32,
+}

@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use crate::{
     async_jobs::CancelToken,
-    events::{self, EventEmitter},
+    events::{self, Event::PublishEnd, EventEmitter},
 };
 
 #[derive(Clone, serde::Deserialize, Debug)]
@@ -84,10 +84,8 @@ async fn publish_once(
 ) {
     println!("publishing once");
     match publish_message(target, channel, body, routing_key).await {
-        Ok(_) => emitter.emit_publish_end_event(events::PublishEnd(Ok(1))),
-        Err(e) => {
-            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(e.to_string()))))
-        }
+        Ok(_) => emitter.emit(PublishEnd(Ok(1))),
+        Err(e) => emitter.emit(PublishEnd(Err(e.to_string()))),
     }
 }
 
@@ -107,14 +105,14 @@ async fn publish_loop<F>(
     while done_callback(i) {
         if cancel.should_cancel() {
             println!("got a signal to finish publishing");
-            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(
+            emitter.emit(PublishEnd(Err(String::from(
                 "publishing cancelled before finishing",
             ))));
             return;
         }
 
         if let Err(e) = publish_message(target, channel, body.clone(), routing_key).await {
-            emitter.emit_publish_end_event(events::PublishEnd(Err(String::from(e.to_string()))));
+            emitter.emit(PublishEnd(Err(e.to_string())));
             return;
         }
 
@@ -122,5 +120,5 @@ async fn publish_loop<F>(
         println!("published {:?} messages so far", i);
     }
 
-    emitter.emit_publish_end_event(events::PublishEnd(Ok(i)));
+    emitter.emit(PublishEnd(Ok(i)));
 }
