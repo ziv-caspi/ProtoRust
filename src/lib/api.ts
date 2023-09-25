@@ -35,7 +35,7 @@ export async function publishRabbitMessage(protoConfig: ProtoConfig, params: Rab
         protoFile: protoConfig.protoFilePath,
         messageName: protoConfig.currentSelectedMessage,
         json,
-        routingKey: '/',
+        routingKey: params.routing_key,
         strategy
     })
 }
