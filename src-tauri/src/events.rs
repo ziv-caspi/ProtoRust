@@ -1,7 +1,7 @@
 #[derive(Clone, serde::Serialize)]
 pub enum Event {
     PublishEnd(Result<i32, String>),
-    ProgressUpdate(ProgressUpdate),
+    ProgressUpdate(ProgressUpdateData),
 }
 
 pub trait EventEmitter {
@@ -10,7 +10,7 @@ pub trait EventEmitter {
 
 impl EventEmitter for tauri::Window {
     fn emit(&self, event: Event) {
-        match event {
+        let _ = match event {
             Event::PublishEnd(result) => self.emit("publish_end", result),
             Event::ProgressUpdate(progress) => self.emit("progress_update", progress),
         };
@@ -18,8 +18,8 @@ impl EventEmitter for tauri::Window {
 }
 
 #[derive(Clone, serde::Serialize)]
-pub struct ProgressUpdate {
-    published_count: i32,
-    expected_speed: i32,
-    actual_speed: i32,
+pub struct ProgressUpdateData {
+    pub published_count: i32,
+    pub expected_speed: i32,
+    pub actual_speed: i32,
 }

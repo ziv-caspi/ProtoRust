@@ -12,7 +12,27 @@
 
   export let jsonValue: string;
   let publishLoading = false;
-  let toastState = { shouldOpen: false, isError: false, errorMessage: "" };
+  type ToastType = "success" | "error" | "info";
+  let toastState = {
+    shouldOpen: false,
+    type: "success" as ToastType,
+    message: "",
+  };
+
+  appWindow.listen("progress_update", (event) => {
+    const payload = event.payload as {
+      published_count: number;
+      expected_speed: number;
+      actual_speed: number;
+    };
+    console.log("progress update", event.payload);
+    toastState = {
+      type: "info",
+      shouldOpen: true,
+      message: `Published ${payload.published_count} messages. Acutal speed: ${payload.actual_speed}`,
+    };
+  });
+
   appWindow.listen("publish_end", (event) => {
     console.log(event.event, event.payload);
 
@@ -21,16 +41,16 @@
       let ok = event.payload as { Ok: number };
       toastState = {
         ...toastState,
-        isError: false,
+        type: "success",
         shouldOpen: true,
       };
     } else if (result.hasOwnProperty("Err")) {
       let err = event.payload as { Err: string };
       toastState = {
         ...toastState,
-        isError: true,
+        type: "error",
         shouldOpen: true,
-        errorMessage: `${err.Err}`,
+        message: `${err.Err}`,
       };
     }
 
@@ -54,10 +74,10 @@
     publishLoading = true;
     try {
       await startPublishRabbitMessage($protoConfig, rabbitParams, jsonValue);
-      // toastState = { ...toastState, isError: false, shouldOpen: true };
+      // toastState = { ...toastState, type: false, shouldOpen: true };
     } catch (err) {
       console.error(err);
-      toastState = { errorMessage: `${err}`, isError: true, shouldOpen: true };
+      toastState = { message: `${err}`, type: "error", shouldOpen: true };
       publishLoading = false;
     }
   }
@@ -67,8 +87,8 @@
       await cancelPublishing();
     } catch (err) {
       toastState = {
-        errorMessage: `could not cancel: ${err}`,
-        isError: true,
+        message: `could not cancel: ${err}`,
+        type: "error",
         shouldOpen: true,
       };
     }
